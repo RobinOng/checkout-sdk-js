@@ -31,6 +31,7 @@ export default class GoogleRecaptcha {
                     sitekey,
                     size: 'invisible',
                     callback: () => {
+                        console.log(recaptcha.getResponse());
                         event$.next({
                             token: recaptcha.getResponse(),
                         });
@@ -59,7 +60,15 @@ export default class GoogleRecaptcha {
         const retryInterval = 250;
         const maxRetries = timeout / retryInterval;
 
+        setTimeout(() => {
+            const element = document.querySelector('iframe[src*="bframe"]');
+            console.log('execute2', element);
+        }, 10000);
+        const element = document.querySelector('iframe[src*="bframe"]');
+        console.log('execute12', element);
+
         return defer(() => {
+            console.log('execute3');
             const element = document.querySelector('iframe[src*="bframe"]');
 
             return element ?
