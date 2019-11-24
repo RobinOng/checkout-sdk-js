@@ -17,7 +17,6 @@ export interface OrderMetaState extends InternalOrderMeta {
     orderToken?: string;
     callbackUrl?: string;
     payment?: InternalOrderPayment;
-    spamProtectionToken?: string;
 }
 
 export interface OrderErrorsState {
@@ -28,7 +27,7 @@ export interface OrderErrorsState {
 
 export interface OrderStatusesState {
     isLoading?: boolean;
-    isSpamProtectionExecuting?: boolean;
+    isSpamProtectionInitializing?: boolean;
     isSubmitting?: boolean;
     isFinalizing?: boolean;
 }

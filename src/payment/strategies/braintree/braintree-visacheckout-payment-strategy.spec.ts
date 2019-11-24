@@ -11,7 +11,6 @@ import { ConfigActionCreator, ConfigRequestSender } from '../../../config';
 import { OrderActionCreator, OrderActionType, OrderRequestBody, OrderRequestSender } from '../../../order';
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
 import { getOrderRequestBody } from '../../../order/internal-orders.mock';
-import { createSpamProtection, SpamProtectionActionCreator } from '../../../order/spam-protection';
 import { getShippingAddress } from '../../../shipping/shipping-addresses.mock';
 import createPaymentClient from '../../create-payment-client';
 import createPaymentStrategyRegistry from '../../create-payment-strategy-registry';
@@ -69,8 +68,7 @@ describe('BraintreeVisaCheckoutPaymentStrategy', () => {
         jest.spyOn(visaCheckoutScriptLoader, 'load').mockImplementation(() => Promise.resolve(visaCheckoutSDK));
 
         const paymentClient = createPaymentClient(store);
-        const spamProtection = createSpamProtection(createScriptLoader());
-        const registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, spamProtection, 'en_US');
+        const registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, 'en_US');
         const checkoutRequestSender = new CheckoutRequestSender(createRequestSender());
         const configRequestSender = new ConfigRequestSender(createRequestSender());
         const configActionCreator = new ConfigActionCreator(configRequestSender);
@@ -79,8 +77,7 @@ describe('BraintreeVisaCheckoutPaymentStrategy', () => {
         checkoutActionCreator = new CheckoutActionCreator(checkoutRequestSender, configActionCreator);
         orderActionCreator = new OrderActionCreator(
             new OrderRequestSender(createRequestSender()),
-            checkoutValidator,
-            new SpamProtectionActionCreator(spamProtection)
+            checkoutValidator
         );
         paymentMethodActionCreator = new PaymentMethodActionCreator(new PaymentMethodRequestSender(createRequestSender()));
         paymentStrategyActionCreator = new PaymentStrategyActionCreator(registry, orderActionCreator);

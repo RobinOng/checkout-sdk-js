@@ -359,11 +359,11 @@ export function createCheckoutStoreStatusSelectorFactory(): CheckoutStoreStatusS
 
     const isSubmittingOrder = createSelector(
         ({ paymentStrategies }: InternalCheckoutSelectors) => paymentStrategies.isExecuting,
-        ({ order }: InternalCheckoutSelectors) => order.isSpamProtectionExecuting,
-        (isExecuting, isSpamProtectionExecuting) => (methodId?: string) => {
+        ({ order }: InternalCheckoutSelectors) => order.isSpamProtectionInitializing,
+        (isExecuting, isSpamProtectionInitializing) => (methodId?: string) => {
             return (
                 isExecuting(methodId) ||
-                isSpamProtectionExecuting()
+                isSpamProtectionInitializing()
             );
         }
     );

@@ -72,21 +72,21 @@ describe('CheckoutStoreStatusSelector', () => {
         });
 
         it('returns true if executing spam protection', () => {
-            jest.spyOn(selectors.order, 'isSpamProtectionExecuting').mockReturnValue(true);
+            jest.spyOn(selectors.order, 'isSpamProtectionInitializing').mockReturnValue(true);
 
             const statuses = createCheckoutStoreStatusSelector(selectors);
 
             expect(statuses.isSubmittingOrder()).toEqual(true);
-            expect(selectors.order.isSpamProtectionExecuting).toHaveBeenCalled();
+            expect(selectors.order.isSpamProtectionInitializing).toHaveBeenCalled();
         });
 
         it('returns false if executing spam protection', () => {
-            jest.spyOn(selectors.order, 'isSpamProtectionExecuting').mockReturnValue(false);
+            jest.spyOn(selectors.order, 'isSpamProtectionInitializing').mockReturnValue(false);
 
             const statuses = createCheckoutStoreStatusSelector(selectors);
 
             expect(statuses.isSubmittingOrder()).toEqual(false);
-            expect(selectors.order.isSpamProtectionExecuting).toHaveBeenCalled();
+            expect(selectors.order.isSpamProtectionInitializing).toHaveBeenCalled();
         });
     });
 

@@ -1,6 +1,4 @@
-import { createAction } from '@bigcommerce/data-store';
 import { createRequestSender, Response } from '@bigcommerce/request-sender';
-import { createScriptLoader } from '@bigcommerce/script-loader';
 import { merge, omit } from 'lodash';
 import { from, of } from 'rxjs';
 import { catchError, toArray } from 'rxjs/operators';
@@ -12,7 +10,7 @@ import { ErrorResponseBody } from '../common/error';
 import { MissingDataError } from '../common/error/errors';
 import { InternalResponseBody } from '../common/http-request';
 import { getErrorResponse, getResponse } from '../common/http-request/responses.mock';
-import { getConfig, getConfigState } from '../config/configs.mock';
+import { getConfigState } from '../config/configs.mock';
 
 import { InternalOrderResponseBody } from './internal-order-responses';
 import { getCompleteOrderResponseBody, getInternalOrderRequestBody, getOrderRequestBody, getSubmitOrderResponseBody, getSubmitOrderResponseHeaders } from './internal-orders.mock';
@@ -21,14 +19,12 @@ import OrderActionCreator from './order-action-creator';
 import { OrderActionType } from './order-actions';
 import OrderRequestSender from './order-request-sender';
 import { getOrder, getOrderState } from './orders.mock';
-import { createSpamProtection, SpamProtectionActionCreator, SpamProtectionActionType } from './spam-protection';
 
 describe('OrderActionCreator', () => {
     let orderRequestSender: OrderRequestSender;
     let checkoutValidator: CheckoutValidator;
     let checkoutRequestSender: CheckoutRequestSender;
     let orderActionCreator: OrderActionCreator;
-    let spamProtectionActionCreator: SpamProtectionActionCreator;
     let state: CheckoutStoreState;
     let store: CheckoutStore;
 
@@ -37,9 +33,7 @@ describe('OrderActionCreator', () => {
             ...getCheckoutStoreState(),
             order: {
                 errors: {},
-                meta: {
-                    spamProtectionToken: 'spamProtectionToken',
-                },
+                meta: {},
                 statuses: {},
             },
         };
@@ -50,7 +44,6 @@ describe('OrderActionCreator', () => {
         orderRequestSender = new OrderRequestSender(createRequestSender());
         checkoutRequestSender = new CheckoutRequestSender(createRequestSender());
         checkoutValidator = new CheckoutValidator(checkoutRequestSender);
-        spamProtectionActionCreator = new SpamProtectionActionCreator(createSpamProtection(createScriptLoader()));
 
         jest.spyOn(orderRequestSender, 'loadOrder').mockReturnValue({});
         jest.spyOn(orderRequestSender, 'submitOrder').mockReturnValue({});
@@ -59,12 +52,7 @@ describe('OrderActionCreator', () => {
         jest.spyOn(checkoutValidator, 'validate')
             .mockReturnValue(Promise.resolve());
 
-        jest.spyOn(spamProtectionActionCreator, 'execute').mockReturnValue(from([
-            createAction(SpamProtectionActionType.ExecuteRequested),
-            createAction(SpamProtectionActionType.Completed, { token: 'spamProtectionToken' }),
-        ]));
-
-        orderActionCreator = new OrderActionCreator(orderRequestSender, checkoutValidator, spamProtectionActionCreator);
+        orderActionCreator = new OrderActionCreator(orderRequestSender, checkoutValidator);
     });
 
     describe('#loadOrder()', () => {
@@ -388,40 +376,6 @@ describe('OrderActionCreator', () => {
                 { type: OrderActionType.FinalizeOrderRequested },
                 { type: OrderActionType.FinalizeOrderFailed, payload: errorResponse, error: true },
             ]);
-        });
-    });
-
-    describe('#executeSpamProtection()', () => {
-        it('emits actions if able to execute spam protection', async () => {
-            const actions = await from(orderActionCreator.executeSpamProtection()(store))
-                .pipe(toArray())
-                .toPromise();
-
-            expect(actions).toEqual([
-                { type: SpamProtectionActionType.ExecuteRequested },
-                { type: SpamProtectionActionType.Completed, payload: { token: 'spamProtectionToken' } },
-            ]);
-        });
-
-        it('does not emit actions if spam protection is disabled', async () => {
-            const config = getConfig();
-            config.storeConfig.checkoutSettings.isSpamProtectionEnabled = false;
-            const configState = {
-                ...getConfigState(),
-                data: config,
-            };
-            const state = {
-                ...getCheckoutStoreState(),
-                config: configState,
-            };
-
-            const store = createCheckoutStore(state);
-
-            const actions = await from(orderActionCreator.executeSpamProtection()(store))
-                .pipe(toArray())
-                .toPromise();
-
-            expect(actions).toEqual([]);
         });
     });
 });

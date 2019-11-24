@@ -1,7 +1,6 @@
 import { createClient as createPaymentClient } from '@bigcommerce/bigpay-client';
 import { createAction } from '@bigcommerce/data-store';
 import { createRequestSender, RequestSender } from '@bigcommerce/request-sender';
-import { createScriptLoader } from '@bigcommerce/script-loader';
 import { merge } from 'lodash';
 import { from, of } from 'rxjs';
 import { catchError, toArray } from 'rxjs/operators';
@@ -14,7 +13,6 @@ import { OrderActionCreator, OrderActionType, OrderRequestSender } from '../orde
 import { OrderFinalizationNotRequiredError } from '../order/errors';
 import { getOrderRequestBody } from '../order/internal-orders.mock';
 import { getOrderState } from '../order/orders.mock';
-import { createSpamProtection, GoogleRecaptcha, SpamProtectionActionCreator, SpamProtectionActionType } from '../order/spam-protection';
 
 import createPaymentStrategyRegistry from './create-payment-strategy-registry';
 import PaymentActionCreator from './payment-action-creator';
@@ -33,7 +31,6 @@ describe('PaymentStrategyActionCreator', () => {
     let orderActionCreator: OrderActionCreator;
     let paymentClient: any;
     let requestSender: RequestSender;
-    let spamProtection: GoogleRecaptcha;
     let registry: PaymentStrategyRegistry;
     let state: CheckoutStoreState;
     let store: CheckoutStore;
@@ -45,12 +42,10 @@ describe('PaymentStrategyActionCreator', () => {
         store = createCheckoutStore(state);
         requestSender = createRequestSender();
         paymentClient = createPaymentClient();
-        spamProtection = createSpamProtection(createScriptLoader());
-        registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, spamProtection, 'en_US');
+        registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, 'en_US');
         orderActionCreator = new OrderActionCreator(
             new OrderRequestSender(requestSender),
-            new CheckoutValidator(new CheckoutRequestSender(createRequestSender())),
-            new SpamProtectionActionCreator(spamProtection)
+            new CheckoutValidator(new CheckoutRequestSender(createRequestSender()))
         );
         strategy = new CreditCardPaymentStrategy(
             store,
@@ -252,12 +247,6 @@ describe('PaymentStrategyActionCreator', () => {
 
     describe('#execute()', () => {
         beforeEach(() => {
-            jest.spyOn(orderActionCreator, 'executeSpamProtection')
-                .mockReturnValue(() => from([
-                    createAction(SpamProtectionActionType.ExecuteRequested),
-                    createAction(SpamProtectionActionType.Completed, { token: 'spamProtectionToken' }),
-                ]));
-
             jest.spyOn(strategy, 'execute')
                 .mockReturnValue(Promise.resolve(store.getState()));
 
@@ -300,8 +289,6 @@ describe('PaymentStrategyActionCreator', () => {
                 .toPromise();
 
             expect(actions).toEqual([
-                { type: SpamProtectionActionType.ExecuteRequested },
-                { type: SpamProtectionActionType.Completed, payload: { token: 'spamProtectionToken' } },
                 { type: PaymentStrategyActionType.ExecuteRequested, meta: { methodId } },
                 { type: PaymentStrategyActionType.ExecuteSucceeded, meta: { methodId } },
             ]);
@@ -326,8 +313,6 @@ describe('PaymentStrategyActionCreator', () => {
 
             expect(errorHandler).toHaveBeenCalled();
             expect(actions).toEqual([
-                { type: SpamProtectionActionType.ExecuteRequested },
-                { type: SpamProtectionActionType.Completed, payload: { token: 'spamProtectionToken' } },
                 { type: PaymentStrategyActionType.ExecuteRequested, meta: { methodId } },
                 { type: PaymentStrategyActionType.ExecuteFailed, error: true, payload: executeError, meta: { methodId } },
             ]);
@@ -338,7 +323,7 @@ describe('PaymentStrategyActionCreator', () => {
                 ...state,
                 paymentMethods: { ...state.paymentMethods, data: [] },
             });
-            registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, spamProtection, 'en_US');
+            registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, 'en_US');
 
             const actionCreator = new PaymentStrategyActionCreator(registry, orderActionCreator);
 
@@ -359,7 +344,7 @@ describe('PaymentStrategyActionCreator', () => {
                 }),
             });
 
-            registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, spamProtection, 'en_US');
+            registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, 'en_US');
 
             jest.spyOn(registry, 'get')
                 .mockReturnValue(noPaymentDataStrategy);
@@ -464,7 +449,7 @@ describe('PaymentStrategyActionCreator', () => {
                 ...state,
                 order: getOrderState(),
             });
-            registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, spamProtection, 'en_US');
+            registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, 'en_US');
 
             const actionCreator = new PaymentStrategyActionCreator(registry, orderActionCreator);
 
@@ -484,7 +469,7 @@ describe('PaymentStrategyActionCreator', () => {
                     data: [],
                 },
             });
-            registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, spamProtection, 'en_US');
+            registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, 'en_US');
 
             const actionCreator = new PaymentStrategyActionCreator(registry, orderActionCreator);
 

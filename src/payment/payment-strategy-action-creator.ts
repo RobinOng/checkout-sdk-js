@@ -27,7 +27,7 @@ export default class PaymentStrategyActionCreator {
         const meta = { methodId: payment.methodId };
 
         return store => concat(
-            this._orderActionCreator.executeSpamProtection()(store),
+            // this._orderActionCreator.executeSpamProtection()(store),
             of(createAction(PaymentStrategyActionType.ExecuteRequested, undefined, meta)),
             defer(() => {
                 const state = store.getState();

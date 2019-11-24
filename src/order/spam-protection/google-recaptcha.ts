@@ -1,5 +1,5 @@
 import { defer, of, throwError, Observable, Subject } from 'rxjs';
-import { catchError, delay, retryWhen, switchMap } from 'rxjs/operators';
+import { catchError, delay, retryWhen, switchMap, take } from 'rxjs/operators';
 
 import { MutationObserverFactory } from '../../common/dom';
 import { NotInitializedError, NotInitializedErrorType } from '../../common/error/errors';
@@ -31,7 +31,6 @@ export default class GoogleRecaptcha {
                     sitekey,
                     size: 'invisible',
                     callback: () => {
-                        console.log(recaptcha.getResponse());
                         event$.next({
                             token: recaptcha.getResponse(),
                         });
@@ -49,30 +48,22 @@ export default class GoogleRecaptcha {
     }
 
     execute(): Observable<RecaptchaResult> {
-        const event$ = this._event$;
-        const recaptcha = this._recaptcha;
-
-        if (!event$ || !recaptcha) {
-            throw new NotInitializedError(NotInitializedErrorType.SpamProtectionNotInitialized);
-        }
-
         const timeout = 7000;
         const retryInterval = 250;
         const maxRetries = timeout / retryInterval;
 
-        setTimeout(() => {
-            const element = document.querySelector('iframe[src*="bframe"]');
-            console.log('execute2', element);
-        }, 10000);
-        const element = document.querySelector('iframe[src*="bframe"]');
-        console.log('execute12', element);
-
         return defer(() => {
-            console.log('execute3');
+            const event$ = this._event$;
+            const recaptcha = this._recaptcha;
+
+            if (!event$ || !recaptcha) {
+                throw new NotInitializedError(NotInitializedErrorType.SpamProtectionNotInitialized);
+            }
+
             const element = document.querySelector('iframe[src*="bframe"]');
 
             return element ?
-                of(element) :
+                of({ element, event$, recaptcha }) :
                 throwError(new SpamProtectionNotLoadedError());
         })
             .pipe(
@@ -82,13 +73,14 @@ export default class GoogleRecaptcha {
                         index < maxRetries ? of(error) : throwError(error)
                     )
                 )),
-                switchMap(element => {
+                switchMap(({ element, event$, recaptcha }) => {
                     this._watchRecaptchaChallengeWindow(event$, element);
                     recaptcha.execute();
 
                     return event$;
                 }),
-                catchError(error => of({ error }))
+                catchError(error => of({ error })),
+                take(1)
             );
     }
 

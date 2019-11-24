@@ -1,3 +1,4 @@
+import { createRequestSender, RequestSender } from '@bigcommerce/request-sender';
 import { ScriptLoader } from '@bigcommerce/script-loader';
 import { from, of } from 'rxjs';
 import { catchError, toArray } from 'rxjs/operators';
@@ -10,19 +11,24 @@ import GoogleRecaptcha from './google-recaptcha';
 import SpamProtectionActionCreator from './spam-protection-action-creator';
 import { SpamProtectionActionType } from './spam-protection-actions';
 import { SpamProtectionOptions } from './spam-protection-options';
+import SpamProtectionRequestSender from './spam-protection-request-sender';
 
 describe('SpamProtectionActionCreator', () => {
-    let spamProtectionActionCreator: SpamProtectionActionCreator;
     let googleRecaptcha: GoogleRecaptcha;
+    let requestSender: RequestSender;
+    let spamProtectionActionCreator: SpamProtectionActionCreator;
+    let spamProtectionRequestSender: SpamProtectionRequestSender;
     let state: CheckoutStoreState;
     let store: CheckoutStore;
 
     beforeEach(() => {
         state = getCheckoutStoreState();
         store = createCheckoutStore(state);
+        requestSender = createRequestSender();
         googleRecaptcha = createSpamProtection(new ScriptLoader());
 
-        spamProtectionActionCreator = new SpamProtectionActionCreator(googleRecaptcha);
+        spamProtectionRequestSender = new SpamProtectionRequestSender(requestSender);
+        spamProtectionActionCreator = new SpamProtectionActionCreator(googleRecaptcha, spamProtectionRequestSender);
 
         jest.spyOn(googleRecaptcha, 'load').mockImplementation(() => Promise.resolve());
     });

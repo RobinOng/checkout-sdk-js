@@ -2,7 +2,7 @@ import { createAction } from '@bigcommerce/data-store';
 import { createRequestSender, createTimeout } from '@bigcommerce/request-sender';
 import { createScriptLoader } from '@bigcommerce/script-loader';
 import { get, map, merge } from 'lodash';
-import { from, of, Observable } from 'rxjs';
+import { of, Observable } from 'rxjs';
 
 import { BillingAddressActionCreator, BillingAddressRequestSender } from '../billing';
 import { getBillingAddress } from '../billing/billing-addresses.mock';
@@ -18,7 +18,7 @@ import { getCountriesResponseBody } from '../geography/countries.mock';
 import { OrderActionCreator, OrderRequestSender } from '../order';
 import { getCompleteOrderResponseBody, getOrderRequestBody } from '../order/internal-orders.mock';
 import { getOrder } from '../order/orders.mock';
-import { createSpamProtection, SpamProtectionActionCreator, SpamProtectionActionType, SpamProtectionOptions } from '../order/spam-protection';
+import { createSpamProtection, SpamProtectionActionCreator, SpamProtectionActionType, SpamProtectionOptions, SpamProtectionRequestSender } from '../order/spam-protection';
 import { createPaymentClient, PaymentMethodActionCreator, PaymentMethodRequestSender, PaymentStrategyActionCreator, PaymentStrategyRegistry } from '../payment';
 import { InstrumentActionCreator, InstrumentRequestSender } from '../payment/instrument';
 import { deleteInstrumentResponseBody, getLoadInstrumentsResponseBody, getVaultAccessTokenResponseBody } from '../payment/instrument/instrument.mock';
@@ -67,6 +67,7 @@ describe('CheckoutService', () => {
     let shippingStrategyActionCreator: ShippingStrategyActionCreator;
     let shippingCountryRequestSender: ShippingCountryRequestSender;
     let spamProtectionActionCreator: SpamProtectionActionCreator;
+    let spamProtectionRequestSender: SpamProtectionRequestSender;
     let store: CheckoutStore;
     let storeCreditRequestSender: StoreCreditRequestSender;
 
@@ -191,11 +192,14 @@ describe('CheckoutService', () => {
 
         instrumentActionCreator = new InstrumentActionCreator(instrumentRequestSender);
 
+        spamProtectionRequestSender = new SpamProtectionRequestSender(requestSender);
+
         spamProtectionActionCreator = new SpamProtectionActionCreator(
-            createSpamProtection(createScriptLoader())
+            createSpamProtection(createScriptLoader()),
+            spamProtectionRequestSender
         );
 
-        orderActionCreator = new OrderActionCreator(orderRequestSender, checkoutValidator, spamProtectionActionCreator);
+        orderActionCreator = new OrderActionCreator(orderRequestSender, checkoutValidator);
 
         paymentMethodActionCreator = new PaymentMethodActionCreator(paymentMethodRequestSender);
 
@@ -439,12 +443,6 @@ describe('CheckoutService', () => {
             jest.spyOn(noPaymentDataRequiredPaymentStrategy, 'execute').mockResolvedValue(store.getState());
 
             paymentStrategyRegistry.get = jest.fn(() => noPaymentDataRequiredPaymentStrategy);
-
-            jest.spyOn(orderActionCreator, 'executeSpamProtection')
-                .mockReturnValue(() => from([
-                    createAction(SpamProtectionActionType.ExecuteRequested),
-                    createAction(SpamProtectionActionType.Completed, { token: 'spamProtectionToken' }),
-                ]));
         });
 
         it('finds payment strategy', async () => {

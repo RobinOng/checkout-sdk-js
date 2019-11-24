@@ -1,5 +1,5 @@
 import { createAction, createErrorAction, ThunkAction } from '@bigcommerce/data-store';
-import { concat, defer, empty, from, of, Observable, Observer } from 'rxjs';
+import { concat, defer, from, of, Observable, Observer } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 
 import { CheckoutValidator, InternalCheckoutSelectors } from '../checkout';
@@ -11,13 +11,11 @@ import InternalOrderRequestBody from './internal-order-request-body';
 import { FinalizeOrderAction, LoadOrderAction, LoadOrderPaymentsAction, OrderActionType, SubmitOrderAction } from './order-actions';
 import OrderRequestBody from './order-request-body';
 import OrderRequestSender from './order-request-sender';
-import { SpamProtectionAction, SpamProtectionActionCreator } from './spam-protection';
 
 export default class OrderActionCreator {
     constructor(
         private _orderRequestSender: OrderRequestSender,
-        private _checkoutValidator: CheckoutValidator,
-        private _spamProtectionActionCreator: SpamProtectionActionCreator
+        private _checkoutValidator: CheckoutValidator
     ) {}
 
     loadOrder(orderId: number, options?: RequestOptions): Observable<LoadOrderAction> {
@@ -63,16 +61,14 @@ export default class OrderActionCreator {
         });
     }
 
-    submitOrder(payload: OrderRequestBody, options?: RequestOptions): ThunkAction<SubmitOrderAction | SpamProtectionAction, InternalCheckoutSelectors> {
+    submitOrder(payload: OrderRequestBody, options?: RequestOptions): ThunkAction<SubmitOrderAction, InternalCheckoutSelectors> {
         return store => concat(
             of(createAction(OrderActionType.SubmitOrderRequested)),
             defer(() => {
                 const state = store.getState();
                 const externalSource = state.config.getExternalSource();
                 const checkout = state.checkout.getCheckout();
-                const orderMeta = state.order.getOrderMeta();
                 const storeConfig = state.config.getStoreConfig();
-                const spamProtectionToken = orderMeta && orderMeta.spamProtectionToken;
 
                 if (!storeConfig) {
                     throw new MissingDataError(MissingDataErrorType.MissingCheckoutConfig);
@@ -82,19 +78,12 @@ export default class OrderActionCreator {
                     throw new MissingDataError(MissingDataErrorType.MissingCheckout);
                 }
 
-                const { isSpamProtectionEnabled } = storeConfig.checkoutSettings;
-
-                if (isSpamProtectionEnabled && !spamProtectionToken) {
-                    throw new MissingDataError(MissingDataErrorType.MissingSpamProtectionToken);
-                }
-
                 return from(
                     this._checkoutValidator.validate(checkout, options)
                         .then(() => this._orderRequestSender.submitOrder(this._mapToOrderRequestBody(
                             payload,
                             checkout.customerMessage,
-                            externalSource,
-                            spamProtectionToken
+                            externalSource
                         ), options))
                 ).pipe(
                     switchMap(response => concat(
@@ -124,24 +113,6 @@ export default class OrderActionCreator {
         );
     }
 
-    executeSpamProtection(): ThunkAction<SpamProtectionAction> {
-        return store => {
-            const storeConfig = store.getState().config.getStoreConfig();
-
-            if (!storeConfig) {
-                throw new MissingDataError(MissingDataErrorType.MissingCheckoutConfig);
-            }
-
-            const { isSpamProtectionEnabled } = storeConfig.checkoutSettings;
-
-            if (!isSpamProtectionEnabled) {
-                return empty();
-            }
-
-            return this._spamProtectionActionCreator.execute();
-        };
-    }
-
     private _getCurrentOrderId(state: InternalCheckoutSelectors): number | undefined {
         const order = state.order.getOrder();
         const checkout = state.checkout.getCheckout();
@@ -152,8 +123,7 @@ export default class OrderActionCreator {
     private _mapToOrderRequestBody(
         payload: OrderRequestBody,
         customerMessage: string,
-        externalSource?: string,
-        spamProtectionToken?: string
+        externalSource?: string
     ): InternalOrderRequestBody {
         const { payment, ...order } = payload;
 
@@ -162,7 +132,6 @@ export default class OrderActionCreator {
                 ...order,
                 customerMessage,
                 externalSource,
-                spamProtectionToken,
             };
         }
 
@@ -170,7 +139,6 @@ export default class OrderActionCreator {
             ...order,
             customerMessage,
             externalSource,
-            spamProtectionToken,
             payment: {
                 paymentData: payment.paymentData,
                 name: payment.methodId,

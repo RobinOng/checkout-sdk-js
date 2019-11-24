@@ -10,7 +10,7 @@ import { CouponActionCreator, CouponRequestSender, GiftCertificateActionCreator,
 import { createCustomerStrategyRegistry, CustomerStrategyActionCreator } from '../customer';
 import { CountryActionCreator, CountryRequestSender } from '../geography';
 import { OrderActionCreator, OrderRequestSender } from '../order';
-import { createSpamProtection, SpamProtectionActionCreator } from '../order/spam-protection';
+import { createSpamProtection, SpamProtectionActionCreator, SpamProtectionRequestSender } from '../order/spam-protection';
 import { createPaymentClient, createPaymentStrategyRegistry, PaymentMethodActionCreator, PaymentMethodRequestSender, PaymentStrategyActionCreator } from '../payment';
 import { InstrumentActionCreator, InstrumentRequestSender } from '../payment/instrument';
 import { createShippingStrategyRegistry, ConsignmentActionCreator, ConsignmentRequestSender, ShippingCountryActionCreator, ShippingCountryRequestSender, ShippingStrategyActionCreator } from '../shipping';
@@ -63,11 +63,13 @@ export default function createCheckoutService(options?: CheckoutServiceOptions):
     const checkoutRequestSender = new CheckoutRequestSender(requestSender);
     const configActionCreator = new ConfigActionCreator(new ConfigRequestSender(requestSender));
     const spamProtection = createSpamProtection(createScriptLoader());
-    const spamProtectionActionCreator = new SpamProtectionActionCreator(spamProtection);
+    const spamProtectionActionCreator = new SpamProtectionActionCreator(
+        spamProtection,
+        new SpamProtectionRequestSender(requestSender)
+    );
     const orderActionCreator = new OrderActionCreator(
         orderRequestSender,
-        new CheckoutValidator(checkoutRequestSender),
-        spamProtectionActionCreator
+        new CheckoutValidator(checkoutRequestSender)
     );
 
     return new CheckoutService(
@@ -85,7 +87,7 @@ export default function createCheckoutService(options?: CheckoutServiceOptions):
         orderActionCreator,
         new PaymentMethodActionCreator(new PaymentMethodRequestSender(requestSender)),
         new PaymentStrategyActionCreator(
-            createPaymentStrategyRegistry(store, paymentClient, requestSender, spamProtection, locale),
+            createPaymentStrategyRegistry(store, paymentClient, requestSender, locale),
             orderActionCreator
         ),
         new ShippingCountryActionCreator(new ShippingCountryRequestSender(requestSender, { locale })),

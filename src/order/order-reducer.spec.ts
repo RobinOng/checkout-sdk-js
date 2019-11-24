@@ -96,46 +96,33 @@ describe('orderReducer()', () => {
         }));
     });
 
-    it('returns new data if spam protection completed successfully', () => {
-        const action: SpamProtectionAction = {
-            type: SpamProtectionActionType.Completed,
-            payload: 'spamProtectionToken',
-        };
-
-        expect(orderReducer(initialState, action)).toEqual(expect.objectContaining({
-            meta: {
-                spamProtectionToken: action.payload,
-            },
-        }));
-    });
-
     it('returns new status while executing spam protection', () => {
         const action: SpamProtectionAction = {
-            type: SpamProtectionActionType.ExecuteRequested,
+            type: SpamProtectionActionType.InitializeRequested,
         };
 
         expect(orderReducer(initialState, action)).toEqual(expect.objectContaining({
-            statuses: { isSpamProtectionExecuting: true },
+            statuses: { isSpamProtectionInitializing: true },
         }));
     });
 
-    it('returns new status if spam protection completed', () => {
+    it('returns new status if spam protection initialize failed', () => {
         const action: SpamProtectionAction = {
-            type: SpamProtectionActionType.Completed,
+            type: SpamProtectionActionType.InitializeFailed,
         };
 
         expect(orderReducer(initialState, action)).toEqual(expect.objectContaining({
-            statuses: { isSpamProtectionExecuting: false },
+            statuses: { isSpamProtectionInitializing: false },
         }));
     });
 
-    it('returns new status if submitting spam protection failed', () => {
+    it('returns new status if spam protection initialize succeeded', () => {
         const action: SpamProtectionAction = {
-            type: SpamProtectionActionType.SubmitFailed,
+            type: SpamProtectionActionType.InitializeSucceeded,
         };
 
         expect(orderReducer(initialState, action)).toEqual(expect.objectContaining({
-            statuses: { isSpamProtectionExecuting: false },
+            statuses: { isSpamProtectionInitializing: false },
         }));
     });
 

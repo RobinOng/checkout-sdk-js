@@ -74,20 +74,20 @@ describe('OrderSelector', () => {
         });
     });
 
-    describe('#isSpamProtectionExecuting()', () => {
-        it('returns true if executing spam protection', () => {
+    describe('#isSpamProtectionInitializing()', () => {
+        it('returns true if initializing spam protection', () => {
             orderSelector = createOrderSelector({
                 ...state.order,
-                statuses: { isSpamProtectionExecuting: true },
+                statuses: { isSpamProtectionInitializing: true },
             }, selectors.billingAddress, selectors.coupons);
 
-            expect(orderSelector.isSpamProtectionExecuting()).toEqual(true);
+            expect(orderSelector.isSpamProtectionInitializing()).toEqual(true);
         });
 
-        it('returns false if not executing spam protection', () => {
+        it('returns false if not initializing spam protection', () => {
             orderSelector = createOrderSelector(state.order, selectors.billingAddress, selectors.coupons);
 
-            expect(orderSelector.isSpamProtectionExecuting()).toEqual(false);
+            expect(orderSelector.isSpamProtectionInitializing()).toEqual(false);
         });
     });
 });

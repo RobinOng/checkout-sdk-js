@@ -13,7 +13,6 @@ import { getCustomerState } from '../../../customer/customers.mock';
 import { OrderActionCreator, OrderActionType, OrderRequestBody } from '../../../order';
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
 import { getOrderRequestBody } from '../../../order/internal-orders.mock';
-import { createSpamProtection, SpamProtectionActionCreator } from '../../../order/spam-protection';
 import { createPaymentClient, createPaymentStrategyRegistry, PaymentActionCreator, PaymentMethod, PaymentMethodActionCreator } from '../../../payment';
 import { getChasePay, getPaymentMethodsState } from '../../../payment/payment-methods.mock';
 import { ChasePayEventType, ChasePayScriptLoader, JPMC } from '../../../payment/strategies/chasepay';
@@ -93,15 +92,13 @@ describe('ChasePayPaymentStrategy', () => {
         const checkoutRequestSender = new CheckoutRequestSender(createRequestSender());
         const configRequestSender = new ConfigRequestSender(createRequestSender());
         const configActionCreator = new ConfigActionCreator(configRequestSender);
-        const spamProtection = createSpamProtection(createScriptLoader());
-        const registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, spamProtection, 'en_US');
+        const registry = createPaymentStrategyRegistry(store, paymentClient, requestSender, 'en_US');
         const _requestSender: PaymentMethodRequestSender = new PaymentMethodRequestSender(requestSender);
 
         paymentMethodActionCreator = new PaymentMethodActionCreator(_requestSender);
         orderActionCreator = new OrderActionCreator(
             paymentClient,
-            new CheckoutValidator(new CheckoutRequestSender(createRequestSender())),
-            new SpamProtectionActionCreator(spamProtection)
+            new CheckoutValidator(new CheckoutRequestSender(createRequestSender()))
         );
         paymentActionCreator = new PaymentActionCreator(
             new PaymentRequestSender(paymentClient),

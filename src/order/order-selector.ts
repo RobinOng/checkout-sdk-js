@@ -12,7 +12,7 @@ export default interface OrderSelector {
     getOrderMeta(): OrderMetaState | undefined;
     getLoadError(): Error | undefined;
     isLoading(): boolean;
-    isSpamProtectionExecuting(): boolean;
+    isSpamProtectionInitializing(): boolean;
 }
 
 export type OrderSelectorFactory = (
@@ -59,8 +59,8 @@ export function createOrderSelectorFactory(): OrderSelectorFactory {
         status => () => status
     );
 
-    const isSpamProtectionExecuting = createSelector(
-        (state: OrderState) => !!state.statuses.isSpamProtectionExecuting,
+    const isSpamProtectionInitializing = createSelector(
+        (state: OrderState) => !!state.statuses.isSpamProtectionInitializing,
         status => () => status
     );
 
@@ -74,7 +74,7 @@ export function createOrderSelectorFactory(): OrderSelectorFactory {
             getOrderMeta: getOrderMeta(state),
             getLoadError: getLoadError(state),
             isLoading: isLoading(state),
-            isSpamProtectionExecuting: isSpamProtectionExecuting(state),
+            isSpamProtectionInitializing: isSpamProtectionInitializing(state),
         };
     });
 }

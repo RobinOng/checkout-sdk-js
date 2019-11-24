@@ -50,9 +50,6 @@ function metaReducer(
             payment: action.payload && action.payload.order && action.payload.order.payment,
         });
 
-    case SpamProtectionActionType.Completed:
-        return objectSet(meta, 'spamProtectionToken', action.payload);
-
     default:
         return meta;
     }
@@ -93,12 +90,12 @@ function statusesReducer(
     case OrderActionType.LoadOrderPaymentsFailed:
         return objectSet(statuses, 'isLoading', false);
 
-    case SpamProtectionActionType.ExecuteRequested:
-        return objectSet(statuses, 'isSpamProtectionExecuting', true);
+    case SpamProtectionActionType.InitializeRequested:
+        return objectSet(statuses, 'isSpamProtectionInitializing', true);
 
-    case SpamProtectionActionType.Completed:
-    case SpamProtectionActionType.SubmitFailed:
-        return objectSet(statuses, 'isSpamProtectionExecuting', false);
+    case SpamProtectionActionType.InitializeFailed:
+    case SpamProtectionActionType.InitializeSucceeded:
+        return objectSet(statuses, 'isSpamProtectionInitializing', false);
 
     default:
         return statuses;

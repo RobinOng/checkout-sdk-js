@@ -1,6 +1,6 @@
-import { createAction, createErrorAction, ThunkAction } from '@bigcommerce/data-store';
-import { concat, defer, of, throwError, Observable } from 'rxjs';
-import { catchError, map, switchMap, take } from 'rxjs/operators';
+import { createAction, ThunkAction } from '@bigcommerce/data-store';
+import { concat, defer, empty, of } from 'rxjs';
+import { catchError, map, switchMapTo } from 'rxjs/operators';
 
 import { InternalCheckoutSelectors } from '../../checkout';
 import { throwErrorAction } from '../../common/error';
@@ -9,96 +9,52 @@ import { MissingDataError, MissingDataErrorType } from '../../common/error/error
 import GoogleRecaptcha from './google-recaptcha';
 import { SpamProtectionAction, SpamProtectionActionType } from './spam-protection-actions';
 import { SpamProtectionOptions } from './spam-protection-options';
+import SpamProtectionRequestSender from './spam-protection-request-sender';
 
 export default class SpamProtectionActionCreator {
     constructor(
-        private _googleRecaptcha: GoogleRecaptcha
+        private _googleRecaptcha: GoogleRecaptcha,
+        private _spamProtectionRequestSender: SpamProtectionRequestSender
     ) {}
 
-    initialize(options: SpamProtectionOptions): ThunkAction<SpamProtectionAction, InternalCheckoutSelectors> {
-        return store => concat(
-            of(createAction(SpamProtectionActionType.InitializeRequested)),
-            defer(() => {
-                console.log('a');
-                const state = store.getState();
-                const config = state.config.getConfig();
-                const { containerId } = options;
+    initialize({ containerId }: SpamProtectionOptions): ThunkAction<SpamProtectionAction, InternalCheckoutSelectors> {
+        return store => {
+            const state = store.getState();
+            const checkout = state.checkout.getCheckout();
 
-                if (!config) {
-                    throw new MissingDataError(MissingDataErrorType.MissingCheckoutConfig);
-                }
+            if (!checkout) {
+                throw new MissingDataError(MissingDataErrorType.MissingCheckout);
+            }
 
-                return this._googleRecaptcha.load(containerId, config.storeConfig.checkoutSettings.googleRecaptchaSitekey);
-            })
-            .pipe(
-                // mergeMapTo(this._googleRecaptcha.execute()),
-                map(() => {
-                    this._googleRecaptcha.execute();
+            const storeConfig = state.config.getStoreConfig();
 
-                    return createAction(SpamProtectionActionType.InitializeSucceeded);
-                })
-            )
-        ).pipe(
-            catchError(error => throwErrorAction(SpamProtectionActionType.InitializeFailed, error))
-        );
+            if (!storeConfig) {
+                throw new MissingDataError(MissingDataErrorType.MissingCheckoutConfig);
+            }
 
-        // return store => concat(
-        //     of(createAction(SpamProtectionActionType.InitializeRequested)),
-        //     defer(() => {
-        //         console.log('a');
-        //         const state = store.getState();
-        //         const config = state.config.getConfig();
-        //         const { containerId } = options;
+            const { isSpamProtectionEnabled, googleRecaptchaSitekey } = storeConfig.checkoutSettings;
 
-        //         if (!config) {
-        //             throw new MissingDataError(MissingDataErrorType.MissingCheckoutConfig);
-        //         }
+            if (!isSpamProtectionEnabled) {
+                return empty();
+            }
 
-        //         return this._googleRecaptcha.load(containerId, config.storeConfig.checkoutSettings.googleRecaptchaSitekey);
-        //     })
-        //     .pipe(
-        //         mergeMapTo(this._googleRecaptcha.execute()),
-        //         map(() => createAction(SpamProtectionActionType.InitializeSucceeded))
-        //     )
-        // ).pipe(
-        //     catchError(error => throwErrorAction(SpamProtectionActionType.InitializeFailed, error))
-        // );
+            return concat(
+                of(createAction(SpamProtectionActionType.InitializeRequested)),
+                defer(() => this._googleRecaptcha.load(containerId, googleRecaptchaSitekey))
+                    .pipe(
+                        switchMapTo(this._googleRecaptcha.execute()),
+                        map(recaptchaResult => {
+                            if (!recaptchaResult.token) {
+                                throw new Error('Spam protection not found.');
+                            }
 
-        // return store => Observable.create((observer: Observer<SpamProtectionAction>) => {
-        //     const state = store.getState();
-        //     const config = state.config.getConfig();
-        //     const { containerId } = options;
-
-        //     if (!config) {
-        //         throw new MissingDataError(MissingDataErrorType.MissingCheckoutConfig);
-        //     }
-
-        //     observer.next(createAction(SpamProtectionActionType.InitializeRequested, undefined));
-
-        //     const recaptchaSitekey = config.storeConfig.checkoutSettings.googleRecaptchaSitekey;
-
-        //     return this._googleRecaptcha.load(containerId, recaptchaSitekey)
-        //         .then(() => {
-        //             observer.next(createAction(SpamProtectionActionType.InitializeSucceeded));
-
-        //             observer.complete();
-        //         })
-        //         .catch(error => {
-        //             observer.error(createErrorAction(SpamProtectionActionType.InitializeFailed, error, containerId));
-        //         });
-        // });
-    }
-
-    execute(): Observable<SpamProtectionAction> {
-        return concat(
-            of(createAction(SpamProtectionActionType.ExecuteRequested, undefined)),
-            this._googleRecaptcha.execute()
-                .pipe(take(1))
-                .pipe(switchMap(({ error, token }) => {
-                    return error ?
-                        throwError(createErrorAction(SpamProtectionActionType.SubmitFailed, error)) :
-                        of(createAction(SpamProtectionActionType.Completed, token));
-                }))
-        );
+                            return this._spamProtectionRequestSender.validate(checkout.id, recaptchaResult.token);
+                        }),
+                        map(() => createAction(SpamProtectionActionType.InitializeSucceeded))
+                    )
+            ).pipe(
+                catchError(error => throwErrorAction(SpamProtectionActionType.InitializeFailed, error))
+            );
+        };
     }
 }

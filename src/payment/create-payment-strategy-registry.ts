@@ -6,7 +6,6 @@ import { BillingAddressActionCreator, BillingAddressRequestSender } from '../bil
 import { CheckoutActionCreator, CheckoutRequestSender, CheckoutStore, CheckoutValidator } from '../checkout';
 import { ConfigActionCreator, ConfigRequestSender } from '../config';
 import { OrderActionCreator, OrderRequestSender } from '../order';
-import { GoogleRecaptcha, SpamProtectionActionCreator } from '../order/spam-protection';
 import { RemoteCheckoutActionCreator, RemoteCheckoutRequestSender } from '../remote-checkout';
 import { StoreCreditActionCreator, StoreCreditRequestSender } from '../store-credit';
 
@@ -46,7 +45,6 @@ export default function createPaymentStrategyRegistry(
     store: CheckoutStore,
     paymentClient: any,
     requestSender: RequestSender,
-    spamProtection: GoogleRecaptcha,
     locale: string
 ) {
     const registry = new PaymentStrategyRegistry(store, { defaultToken: PaymentStrategyType.CREDIT_CARD });
@@ -57,8 +55,7 @@ export default function createPaymentStrategyRegistry(
     const braintreePaymentProcessor = createBraintreePaymentProcessor(scriptLoader);
     const checkoutRequestSender = new CheckoutRequestSender(requestSender);
     const checkoutValidator = new CheckoutValidator(checkoutRequestSender);
-    const spamProtectionActionCreator = new SpamProtectionActionCreator(spamProtection);
-    const orderActionCreator = new OrderActionCreator(new OrderRequestSender(requestSender), checkoutValidator, spamProtectionActionCreator);
+    const orderActionCreator = new OrderActionCreator(new OrderRequestSender(requestSender), checkoutValidator);
     const storeCreditActionCreator = new StoreCreditActionCreator(new StoreCreditRequestSender(requestSender));
     const paymentActionCreator = new PaymentActionCreator(paymentRequestSender, orderActionCreator, paymentRequestTransformer);
     const paymentMethodActionCreator = new PaymentMethodActionCreator(new PaymentMethodRequestSender(requestSender));
