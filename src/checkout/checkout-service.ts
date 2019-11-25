@@ -1092,9 +1092,33 @@ export default class CheckoutService {
      * @returns A promise that resolves to the current state.
      */
     initializeSpamProtection(options: SpamProtectionOptions): Promise<CheckoutSelectors> {
+        console.warn('Please use validateSpamProtection. This method can cause issues with certain payment providers: https://...'); // use some logger, maybe consolelogger
         const action = this._spamProtectionActionCreator.initialize(options);
 
         return this._dispatch(action, { queueId: 'spamProtection' });
+    }
+
+    /**
+     * Initializes the spam protection for order creation.
+     *
+     * With spam protection enabled, the customer has to be verified as
+     * a human. The order creation will fail if spam protection
+     * is enabled but verification fails.
+     *
+     * ```js
+     * await service.initializeSpamProtection({
+     *     containerId: 'spamProtectionContainer',
+     * });
+     * ```
+     *
+     * @param options - Options for initializing spam protection.
+     * @returns A promise that resolves to the current state.
+     */
+    validateSpamProtection(): Promise<CheckoutSelectors> {
+        const action = this._spamProtectionActionCreator.initialize();
+
+        return this._dispatch(action, { queueId: 'spamProtection' })
+            .then(() => this._dispatch(this._spamProtectionActionCreator.validate(), { queueId: 'spamProtection' }));
     }
 
     /**
